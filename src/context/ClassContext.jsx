@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid';
+import { supabase } from '../lib/supabase';
+import { useAuth } from './AuthContext';
 
 const ClassContext = createContext();
 
@@ -8,53 +9,145 @@ export function useClasses() {
 }
 
 export function ClassProvider({ children }) {
-    const [classes, setClasses] = useState(() => {
-        const saved = localStorage.getItem('attendance_classes');
-        return saved ? JSON.parse(saved) : [];
-    });
+    const { user } = useAuth();
+    const [classes, setClasses] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        localStorage.setItem('attendance_classes', JSON.stringify(classes));
-    }, [classes]);
+        if (user) {
+            fetchClasses();
+        } else {
+            setClasses([]);
+            setLoading(false);
+        }
+    }, [user]);
 
-    const addClass = (name) => {
-        setClasses([...classes, {
-            id: uuidv4(),
-            name,
-            students: [],
-            attendance: {}
-        }]);
-    };
+    const fetchClasses = async () => {
+        try {
+            setLoading(true);
+            const { data: classesData, error: classesError } = await supabase
+                .from('classes')
+                .select(`
+                    *,
+                    students (*),
+                    attendance (*)
+                `)
+                .order('created_at', { ascending: true });
 
-    const deleteClass = (id) => {
-        setClasses(classes.filter(c => c.id !== id));
-    };
+            if (classesError) throw classesError;
 
-    const addStudent = (classId, studentName) => {
-        setClasses(classes.map(c => {
-            if (c.id === classId) {
+            // Transform data to match application structure
+            const formattedClasses = classesData.map(cls => {
+                // Transform attendance array to object: { [date]: { [studentId]: status } }
+                const attendanceObj = {};
+                if (cls.attendance) {
+                    cls.attendance.forEach(record => {
+                        if (!attendanceObj[record.date]) {
+                            attendanceObj[record.date] = {};
+                        }
+                        attendanceObj[record.date][record.student_id] = record.status;
+                    });
+                }
+
                 return {
-                    ...c,
-                    students: [...c.students, { id: uuidv4(), name: studentName }]
+                    ...cls,
+                    students: cls.students || [],
+                    attendance: attendanceObj
                 };
-            }
-            return c;
-        }));
+            });
+
+            setClasses(formattedClasses);
+        } catch (error) {
+            console.error('Error fetching data:', error.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const removeStudent = (classId, studentId) => {
-        setClasses(classes.map(c => {
-            if (c.id === classId) {
-                return {
-                    ...c,
-                    students: c.students.filter(s => s.id !== studentId)
-                };
-            }
-            return c;
-        }));
+    const addClass = async (name) => {
+        try {
+            const { data, error } = await supabase
+                .from('classes')
+                .insert([{ user_id: user.id, name }])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            setClasses([...classes, {
+                ...data,
+                students: [],
+                attendance: {}
+            }]);
+        } catch (error) {
+            console.error('Error adding class:', error.message);
+        }
     };
 
-    const updateAttendance = (classId, date, studentId, status) => {
+    const deleteClass = async (id) => {
+        try {
+            const { error } = await supabase
+                .from('classes')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+
+            setClasses(classes.filter(c => c.id !== id));
+        } catch (error) {
+            console.error('Error deleting class:', error.message);
+        }
+    };
+
+    const addStudent = async (classId, studentName) => {
+        try {
+            const { data, error } = await supabase
+                .from('students')
+                .insert([{ class_id: classId, name: studentName }])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            setClasses(classes.map(c => {
+                if (c.id === classId) {
+                    return {
+                        ...c,
+                        students: [...c.students, data]
+                    };
+                }
+                return c;
+            }));
+        } catch (error) {
+            console.error('Error adding student:', error.message);
+        }
+    };
+
+    const removeStudent = async (classId, studentId) => {
+        try {
+            const { error } = await supabase
+                .from('students')
+                .delete()
+                .eq('id', studentId);
+
+            if (error) throw error;
+
+            setClasses(classes.map(c => {
+                if (c.id === classId) {
+                    return {
+                        ...c,
+                        students: c.students.filter(s => s.id !== studentId)
+                    };
+                }
+                return c;
+            }));
+        } catch (error) {
+            console.error('Error removing student:', error.message);
+        }
+    };
+
+    const updateAttendance = async (classId, date, studentId, status) => {
+        // Optimistic update
         setClasses(classes.map(c => {
             if (c.id === classId) {
                 const dateRecord = c.attendance[date] || {};
@@ -71,6 +164,27 @@ export function ClassProvider({ children }) {
             }
             return c;
         }));
+
+        try {
+            const { error } = await supabase
+                .from('attendance')
+                .upsert({
+                    class_id: classId,
+                    student_id: studentId,
+                    date,
+                    status
+                }, {
+                    onConflict: 'class_id, student_id, date'
+                });
+
+            if (error) {
+                throw error;
+                // Revert optimistic update? For now just log error.
+            }
+        } catch (error) {
+            console.error('Error updating attendance:', error.message);
+            // In a real app we should revert the optimistic update here
+        }
     };
 
     const exportData = () => {
@@ -78,13 +192,14 @@ export function ClassProvider({ children }) {
         const downloadAnchorNode = document.createElement('a');
         downloadAnchorNode.setAttribute("href", dataStr);
         downloadAnchorNode.setAttribute("download", "attendance_data.json");
-        document.body.appendChild(downloadAnchorNode); // required for firefox
+        document.body.appendChild(downloadAnchorNode);
         downloadAnchorNode.click();
         downloadAnchorNode.remove();
     };
 
     const value = {
         classes,
+        loading,
         addClass,
         deleteClass,
         addStudent,

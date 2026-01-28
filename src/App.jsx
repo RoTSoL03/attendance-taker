@@ -1,11 +1,19 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ClassProvider } from './context/ClassContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import ClassDetail from './pages/ClassDetail';
 import AttendanceSession from './pages/AttendanceSession';
+import Auth from './pages/Auth';
 
-function App() {
+function AppContent() {
+  const { user } = useAuth();
+
+  if (!user) {
+    return <Auth />;
+  }
+
   return (
     <ClassProvider>
       <Router>
@@ -24,6 +32,14 @@ function App() {
         </Routes>
       </Router>
     </ClassProvider>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

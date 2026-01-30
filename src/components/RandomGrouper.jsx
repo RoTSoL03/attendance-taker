@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { X, Users, RefreshCw, Copy, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function RandomGrouper({ students, onClose }) {
+export default function RandomGrouper({ students, onClose, onGroupsGenerated }) {
     const [method, setMethod] = useState('count'); // 'count' = Number of Groups, 'size' = Members per Group
     const [inputValue, setInputValue] = useState(2);
     const [groups, setGroups] = useState([]);
@@ -39,6 +39,13 @@ export default function RandomGrouper({ students, onClose }) {
 
         setGroups(newGroups);
         setIsGenerated(true);
+
+        // Broadcast
+        if (onGroupsGenerated) {
+            // Convert to simple array of names for lighter payload
+            const simpleGroups = newGroups.map(g => g.map(s => s.name));
+            onGroupsGenerated(simpleGroups);
+        }
     };
 
     const copyToClipboard = (group, index) => {
@@ -73,8 +80,8 @@ export default function RandomGrouper({ students, onClose }) {
                                 <button
                                     onClick={() => setMethod('count')}
                                     className={`flex-1 py-2 px-3 text-sm font-medium rounded-lg transition-all ${method === 'count'
-                                            ? 'bg-primary text-white shadow-sm'
-                                            : 'text-gray-600 hover:bg-gray-50'
+                                        ? 'bg-primary text-white shadow-sm'
+                                        : 'text-gray-600 hover:bg-gray-50'
                                         }`}
                                 >
                                     # of Groups
@@ -82,8 +89,8 @@ export default function RandomGrouper({ students, onClose }) {
                                 <button
                                     onClick={() => setMethod('size')}
                                     className={`flex-1 py-2 px-3 text-sm font-medium rounded-lg transition-all ${method === 'size'
-                                            ? 'bg-primary text-white shadow-sm'
-                                            : 'text-gray-600 hover:bg-gray-50'
+                                        ? 'bg-primary text-white shadow-sm'
+                                        : 'text-gray-600 hover:bg-gray-50'
                                         }`}
                                 >
                                     Group Size

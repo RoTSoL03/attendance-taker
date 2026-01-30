@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useClasses } from '../context/ClassContext';
 import AddStudentForm from '../components/AddStudentForm';
 import StudentRow from '../components/StudentRow';
-import { ArrowLeft, Calendar, Users, Pencil, Trash2, X, Dices, Shuffle, Timer, Volume2 } from 'lucide-react';
+import { ArrowLeft, Calendar, Users, Pencil, Trash2, X, Dices, Shuffle, Timer, Volume2, Copy } from 'lucide-react';
 import WheelOfNames from '../components/WheelOfNames';
 import RandomGrouper from '../components/RandomGrouper';
 import ClassroomTimer from '../components/ClassroomTimer';
@@ -13,7 +13,7 @@ import { format } from 'date-fns';
 export default function ClassDetail() {
     const { classId } = useParams();
 
-    const { classes, addStudent, removeStudent, updateAttendance } = useClasses();
+    const { classes, addStudent, removeStudent, updateAttendance, generateClassCode } = useClasses();
 
     // Default to today YYYY-MM-DD
     const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -85,9 +85,30 @@ export default function ClassDetail() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900">{classData.name}</h1>
-                        <div className="flex items-center text-gray-500 mt-1 gap-2">
-                            <Users size={16} />
-                            <span>{classData.students.length} Students</span>
+                        <div className="flex items-center gap-4 mt-1">
+                            <div className="flex items-center text-gray-500 gap-2">
+                                <Users size={16} />
+                                <span>{classData.students.length} Students</span>
+                            </div>
+
+                            {/* Class Code Display */}
+                            <button
+                                onClick={() => {
+                                    if (classData.join_code) {
+                                        navigator.clipboard.writeText(classData.join_code);
+                                        alert('Code copied!');
+                                    } else {
+                                        generateClassCode(classId);
+                                    }
+                                }}
+                                className="flex items-center gap-2 bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-sm font-bold hover:bg-blue-100 transition-colors"
+                                title="Click to copy or generate"
+                            >
+                                <span className="uppercase tracking-wider">
+                                    {classData.join_code ? `Code: ${classData.join_code}` : 'Generate Code'}
+                                </span>
+                                <Copy size={14} />
+                            </button>
                         </div>
                     </div>
 
@@ -139,6 +160,13 @@ export default function ClassDetail() {
                         >
                             <Users size={20} />
                             Session
+                        </Link>
+                        <Link
+                            to={`/class/${classId}/live`}
+                            className="bg-green-500 text-white px-6 py-3 rounded-xl font-bold text-center hover:bg-green-600 transition-colors shadow-lg shadow-black/10 flex items-center justify-center gap-2 min-w-[140px] border border-green-400"
+                        >
+                            <Users size={20} />
+                            Virtual Room
                         </Link>
                         <button
                             onClick={() => setShowWheel(true)}

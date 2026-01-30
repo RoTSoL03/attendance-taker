@@ -14,7 +14,7 @@ const COLORS = [
     '#2EC4B6'  // Teal
 ];
 
-export default function WheelOfNames({ students, onClose }) {
+export default function WheelOfNames({ students, onClose, onSpinStart, onSpinEnd }) {
     const [spinning, setSpinning] = useState(false);
     const [winner, setWinner] = useState(null);
     const controls = useAnimation();
@@ -30,6 +30,7 @@ export default function WheelOfNames({ students, onClose }) {
 
         setSpinning(true);
         setWinner(null);
+        if (onSpinStart) onSpinStart();
 
         // Calculate new total rotation
         const spinAmount = 1800 + (Math.random() * 360);
@@ -49,9 +50,11 @@ export default function WheelOfNames({ students, onClose }) {
         const finalAngle = newTotalRotation % 360;
         const winningAngle = (360 - finalAngle) % 360;
         const winnerIndex = Math.floor(winningAngle / anglePerSegment);
+        const winnerStudent = displayStudents[winnerIndex];
 
-        setWinner(displayStudents[winnerIndex]);
+        setWinner(winnerStudent);
         setSpinning(false);
+        if (onSpinEnd) onSpinEnd(winnerStudent.name);
     };
 
     return (

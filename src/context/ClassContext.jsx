@@ -1,6 +1,9 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
+import { customAlphabet } from 'nanoid';
+
+const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 6);
 
 const ClassContext = createContext();
 
@@ -187,6 +190,32 @@ export function ClassProvider({ children }) {
         }
     };
 
+    const generateClassCode = async (classId) => {
+        const code = nanoid();
+        console.log(`Generating code ${code} for class ${classId}`);
+        try {
+            const { data, error } = await supabase
+                .from('classes')
+                .update({ join_code: code })
+                .eq('id', classId)
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Supabase Update Error:', error);
+                throw error;
+            }
+
+            setClasses(classes.map(c =>
+                c.id === classId ? { ...c, join_code: code } : c
+            ));
+            return code;
+        } catch (error) {
+            console.error('Error generating class code:', error.message);
+            return null;
+        }
+    };
+
     const exportData = () => {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(classes, null, 2));
         const downloadAnchorNode = document.createElement('a');
@@ -205,7 +234,8 @@ export function ClassProvider({ children }) {
         addStudent,
         removeStudent,
         updateAttendance,
-        exportData
+        exportData,
+        generateClassCode
     };
 
     return (

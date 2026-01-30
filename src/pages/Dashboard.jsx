@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useClasses } from '../context/ClassContext';
+import { useAuth } from '../context/AuthContext';
 import ClassCard from '../components/ClassCard';
-import { Plus, Download } from 'lucide-react';
+import { Plus, Download, LogOut } from 'lucide-react';
 
 export default function Dashboard() {
     const { classes, addClass, deleteClass, exportData } = useClasses();
+    const { signOut } = useAuth();
     const [isAdding, setIsAdding] = useState(false);
     const [newClassName, setNewClassName] = useState('');
 
@@ -24,13 +26,23 @@ export default function Dashboard() {
                     <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Classes</h1>
                     <p className="text-gray-500 mt-1">Manage your classes and attendance</p>
                 </div>
-                <button
-                    onClick={exportData}
-                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-2xl hover:bg-gray-50 transition-colors shadow-sm font-medium"
-                >
-                    <Download size={18} />
-                    <span className="hidden sm:inline">Export Data</span>
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={exportData}
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-2xl hover:bg-gray-50 transition-colors shadow-sm font-medium"
+                    >
+                        <Download size={18} />
+                        <span className="hidden sm:inline">Export Data</span>
+                    </button>
+                    <button
+                        onClick={signOut}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-100 text-red-600 rounded-2xl hover:bg-red-100 transition-colors shadow-sm font-medium"
+                        title="Sign Out"
+                    >
+                        <LogOut size={18} />
+                        <span className="hidden sm:inline">Logout</span>
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Mail, Lock, Loader2, UserPlus, LogIn } from 'lucide-react';
+import { Mail, Lock, Loader2, UserPlus, LogIn, GraduationCap } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function Auth() {
     const [isLogin, setIsLogin] = useState(true);
@@ -38,11 +39,27 @@ export default function Auth() {
                     AT
                 </div>
                 <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-                    Attendance Taker
+                    Bantoto Classrooms
                 </h2>
                 <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-                    {isLogin ? 'Sign in to your account' : 'Create your account'}
+                    {isLogin ? 'Teacher Login' : 'Create Teacher Account'}
                 </p>
+
+                <div className="mt-6 flex justify-center">
+                    <Link to="/join" className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-full shadow-sm text-white bg-green-600 hover:bg-green-700 transition-colors">
+                        <GraduationCap className="-ml-1 mr-2 h-5 w-5" />
+                        I'm a Student
+                    </Link>
+                </div>
+
+                <div className="relative mt-8">
+                    <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-300 dark:border-zinc-700" />
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                        <span className="px-2 bg-gray-50 dark:bg-zinc-950 text-gray-500">Or sign in as teacher</span>
+                    </div>
+                </div>
             </div>
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">

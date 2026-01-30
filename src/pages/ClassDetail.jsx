@@ -1,14 +1,18 @@
 import { useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useClasses } from '../context/ClassContext';
 import AddStudentForm from '../components/AddStudentForm';
 import StudentRow from '../components/StudentRow';
-import { ArrowLeft, Calendar, Users, Pencil, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Calendar, Users, Pencil, Trash2, X, Dices, Shuffle, Timer, Volume2 } from 'lucide-react';
+import WheelOfNames from '../components/WheelOfNames';
+import RandomGrouper from '../components/RandomGrouper';
+import ClassroomTimer from '../components/ClassroomTimer';
+import NoiseMeter from '../components/NoiseMeter';
 import { format } from 'date-fns';
 
 export default function ClassDetail() {
     const { classId } = useParams();
-    const navigate = useNavigate();
+
     const { classes, addStudent, removeStudent, updateAttendance } = useClasses();
 
     // Default to today YYYY-MM-DD
@@ -22,6 +26,14 @@ export default function ClassDetail() {
         setIsEditing(!isEditing);
         setSelectedStudents(new Set());
     };
+
+    // Wheel State
+    const [showWheel, setShowWheel] = useState(false);
+    // Grouper State
+    const [showGrouper, setShowGrouper] = useState(false);
+    // Tools State
+    const [showTimer, setShowTimer] = useState(false);
+    const [showNoiseMeter, setShowNoiseMeter] = useState(false);
 
     const toggleStudentSelection = (studentId) => {
         const newSelected = new Set(selectedStudents);
@@ -102,7 +114,7 @@ export default function ClassDetail() {
                 })()
             }
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="flex flex-col gap-6 mb-8">
                 <div className="md:col-span-2 bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
                     <h2 className="text-lg font-semibold text-gray-900 mb-4">Add Student</h2>
                     <AddStudentForm onAdd={(name) => addStudent(classId, name)} />
@@ -110,18 +122,55 @@ export default function ClassDetail() {
 
                 {/* Gamified Mode Card */}
                 <div className="bg-gradient-to-br from-primary to-blue-600 rounded-3xl p-6 shadow-lg text-white flex flex-col justify-between relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-10 -mt-10 transition-transform group-hover:scale-150 duration-700"></div>
-                    <div>
-                        <h3 className="text-xl font-bold mb-2">Attendance Mode</h3>
-                        <p className="text-blue-100 opacity-90 text-sm">Swipe through students card-style for rapid attendance taking.</p>
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-20 -mt-20 pointer-events-none"></div>
+
+                    <div className="relative z-10 flex-1">
+                        <h3 className="text-2xl font-bold mb-2 flex items-center gap-2">
+                            Classroom Mode
+                        </h3>
+                        <p className="text-blue-100 opacity-90 text-lg">
+                            Your comprehensive teacher toolkit. Take attendance, pick random students, create groups, time activities, and monitor noise levels.
+                        </p>
                     </div>
-                    <Link
-                        to={`/class/${classId}/session`}
-                        className="mt-6 bg-white text-primary px-4 py-3 rounded-xl font-bold text-center hover:bg-blue-50 transition-colors shadow-sm flex items-center justify-center gap-2"
-                    >
-                        <Users size={20} />
-                        Start Session
-                    </Link>
+                    <div className="relative z-10 flex flex-wrap gap-3 justify-end">
+                        <Link
+                            to={`/class/${classId}/session`}
+                            className="bg-white text-primary px-6 py-3 rounded-xl font-bold text-center hover:bg-blue-50 transition-colors shadow-lg shadow-black/10 flex items-center justify-center gap-2 min-w-[140px]"
+                        >
+                            <Users size={20} />
+                            Session
+                        </Link>
+                        <button
+                            onClick={() => setShowWheel(true)}
+                            className="bg-white/10 backdrop-blur-md text-white px-6 py-3 rounded-xl font-bold text-center hover:bg-white/20 transition-colors shadow-lg shadow-black/10 flex items-center justify-center gap-2 min-w-[140px] border border-white/20"
+                        >
+                            <Dices size={20} />
+                            Wheel
+                        </button>
+                        <button
+                            onClick={() => setShowGrouper(true)}
+                            className="bg-white/10 backdrop-blur-md text-white px-6 py-3 rounded-xl font-bold text-center hover:bg-white/20 transition-colors shadow-lg shadow-black/10 flex items-center justify-center gap-2 min-w-[140px] border border-white/20"
+                        >
+                            <Shuffle size={20} />
+                            Groups
+                        </button>
+                        <button
+                            onClick={() => setShowTimer(true)}
+                            className="bg-white/10 backdrop-blur-md text-white px-6 py-3 rounded-xl font-bold text-center hover:bg-white/20 transition-colors shadow-lg shadow-black/10 flex items-center justify-center gap-2 min-w-[140px] border border-white/20"
+                        >
+                            <Timer size={20} />
+                            Timer
+                        </button>
+                        <button
+                            onClick={() => setShowNoiseMeter(true)}
+                            className="bg-white/10 backdrop-blur-md text-white px-6 py-3 rounded-xl font-bold text-center hover:bg-white/20 transition-colors shadow-lg shadow-black/10 flex items-center justify-center gap-2 min-w-[140px] border border-white/20"
+                        >
+                            <Volume2 size={20} />
+                            Ear
+                        </button>
+                    </div>
+
+
                 </div>
             </div>
 
@@ -189,6 +238,31 @@ export default function ClassDetail() {
                     </div>
                 )}
             </div>
+
+
+            {/* Wheel of Names Modal */}
+            {
+                showWheel && (
+                    <WheelOfNames
+                        students={classData.students}
+                        onClose={() => setShowWheel(false)}
+                    />
+                )
+            }
+
+            {/* Random Grouper Modal */}
+            {showGrouper && (
+                <RandomGrouper
+                    students={classData.students}
+                    onClose={() => setShowGrouper(false)}
+                />
+            )}
+
+            {/* Timer Modal */}
+            {showTimer && <ClassroomTimer onClose={() => setShowTimer(false)} />}
+
+            {/* Noise Meter Modal */}
+            {showNoiseMeter && <NoiseMeter onClose={() => setShowNoiseMeter(false)} />}
         </div >
     );
 }

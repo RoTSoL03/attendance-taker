@@ -15,7 +15,7 @@ export default function Layout({ children }) {
                                 <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center text-white font-bold">
                                     AT
                                 </div>
-                                <span className="font-bold text-lg tracking-tight text-gray-900">Bantoto Attendance Tracker</span>
+                                <span className="font-bold text-lg tracking-tight text-gray-900">Bantoto Classrooms</span>
                             </Link>
                         </div>
                         <div className="flex space-x-4 items-center">

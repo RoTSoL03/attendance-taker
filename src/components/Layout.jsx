@@ -1,9 +1,9 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { LayoutDashboard, BookOpen } from 'lucide-react';
-import clsx from 'clsx';
+
 
 export default function Layout({ children }) {
-    const location = useLocation();
+
 
     return (
         <div className="min-h-screen bg-background text-gray-900 font-sans">
@@ -13,7 +13,7 @@ export default function Layout({ children }) {
                         <div className="flex">
                             <Link to="/" className="flex-shrink-0 flex items-center gap-2">
                                 <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center text-white font-bold">
-                                    AT
+                                    BC
                                 </div>
                                 <span className="font-bold text-lg tracking-tight text-gray-900">Bantoto Classrooms</span>
                             </Link>

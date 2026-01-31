@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Mic, MicOff, Volume2, AlertTriangle } from 'lucide-react';
 
 export default function NoiseMeter({ onClose }) {
@@ -6,7 +6,7 @@ export default function NoiseMeter({ onClose }) {
     const [volume, setVolume] = useState(0);
     const [sensitivity, setSensitivity] = useState(50); // 0-100
     const [error, setError] = useState(null);
-    const [maxVolume, setMaxVolume] = useState(0);
+    const [, setMaxVolume] = useState(0);
 
     const audioContextRef = useRef(null);
     const analyzerRef = useRef(null);
@@ -14,8 +14,38 @@ export default function NoiseMeter({ onClose }) {
     const sourceRef = useRef(null);
     const rafRef = useRef(null);
     const streamRef = useRef(null);
+    const sensitivityRef = useRef(sensitivity);
 
-    const startListening = async () => {
+    // Keep ref in sync with state for the animation loop
+    useEffect(() => {
+        sensitivityRef.current = sensitivity;
+    }, [sensitivity]);
+
+    const tick = useCallback(function tickLoop() {
+        if (!analyzerRef.current) return;
+
+        analyzerRef.current.getByteFrequencyData(dataArrayRef.current);
+
+        // Calculate average volume
+        const array = dataArrayRef.current;
+        let values = 0;
+        for (let i = 0; i < array.length; i++) {
+            values += array[i];
+        }
+        const average = values / array.length;
+
+        // Use ref for sensitivity to avoid dependency loop
+        const currentSensitivity = sensitivityRef.current;
+        // Normalize roughly 0-100 (empirically, average is usually 0-128 range for speech)
+        const normalizedVolume = Math.min(100, (average / 128) * 100 * (currentSensitivity / 50));
+
+        setVolume((prev) => prev * 0.8 + normalizedVolume * 0.2); // Smooth it out
+        setMaxVolume(prev => Math.max(prev, normalizedVolume));
+
+        rafRef.current = requestAnimationFrame(tickLoop);
+    }, []);
+
+    const startListening = useCallback(async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             streamRef.current = stream;
@@ -43,9 +73,9 @@ export default function NoiseMeter({ onClose }) {
             console.error("Microphone access denied:", err);
             setError("Microphone access denied. Please allow permission.");
         }
-    };
+    }, [tick]);
 
-    const stopListening = () => {
+    const stopListening = useCallback(() => {
         if (rafRef.current) cancelAnimationFrame(rafRef.current);
         if (sourceRef.current) sourceRef.current.disconnect();
         if (audioContextRef.current) audioContextRef.current.close();
@@ -53,34 +83,14 @@ export default function NoiseMeter({ onClose }) {
 
         setIsListening(false);
         setVolume(0);
-    };
+    }, []);
 
-    const tick = () => {
-        if (!analyzerRef.current) return;
 
-        analyzerRef.current.getByteFrequencyData(dataArrayRef.current);
-
-        // Calculate average volume
-        const array = dataArrayRef.current;
-        let values = 0;
-        for (let i = 0; i < array.length; i++) {
-            values += array[i];
-        }
-        const average = values / array.length;
-
-        // Normalize roughly 0-100 (empirically, average is usually 0-128 range for speech)
-        const normalizedVolume = Math.min(100, (average / 128) * 100 * (sensitivity / 50));
-
-        setVolume((prev) => prev * 0.8 + normalizedVolume * 0.2); // Smooth it out
-        if (normalizedVolume > maxVolume) setMaxVolume(normalizedVolume);
-
-        rafRef.current = requestAnimationFrame(tick);
-    };
 
     useEffect(() => {
         startListening();
         return () => stopListening();
-    }, []);
+    }, [startListening, stopListening]);
 
     // Warn if too loud (threshold > 80 after sensitivity)
     const isTooLoud = volume > 80;
@@ -123,8 +133,7 @@ export default function NoiseMeter({ onClose }) {
                                 {[...Array(5)].map((_, i) => {
                                     // Staggered heights based on volume
                                     // Just a simple visual effect
-                                    const heightBase = volume;
-                                    const heightVar = Math.sin(Date.now() / 100 + i) * 20; // Needs continuous render, but component re-renders on volume change so okay-ish
+                                    // Removed impure Date.now() and unused vars
                                     // Actually Framer Motion is better for smooth animation
                                     // Let's stick to CSS transition on height
 

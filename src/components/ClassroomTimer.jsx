@@ -9,6 +9,33 @@ export default function ClassroomTimer({ onClose }) {
     const [isFinished, setIsFinished] = useState(false);
     const intervalRef = useRef(null);
 
+    const playSound = () => {
+        // Simple oscillator beep
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(440, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1);
+
+            gain.gain.setValueAtTime(0.5, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+
+            osc.start();
+            osc.stop(ctx.currentTime + 0.5);
+        } catch (e) {
+            console.error("Audio play failed", e);
+        }
+    };
+
     const presets = [
         { label: '1m', value: 60 },
         { label: '5m', value: 300 },
@@ -56,32 +83,7 @@ export default function ClassroomTimer({ onClose }) {
         setTimeLeft(seconds);
     };
 
-    const playSound = () => {
-        // Simple oscillator beep
-        try {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContext) return;
 
-            const ctx = new AudioContext();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(440, ctx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1);
-
-            gain.gain.setValueAtTime(0.5, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-
-            osc.start();
-            osc.stop(ctx.currentTime + 0.5);
-        } catch (e) {
-            console.error("Audio play failed", e);
-        }
-    };
 
     // Format time mm:ss
     const formatTime = (seconds) => {
@@ -158,8 +160,8 @@ export default function ClassroomTimer({ onClose }) {
                         <button
                             onClick={toggleTimer}
                             className={`w-16 h-16 rounded-full flex items-center justify-center text-white shadow-lg transition-transform active:scale-95 ${isRunning
-                                    ? 'bg-amber-400 hover:bg-amber-500'
-                                    : 'bg-primary hover:bg-blue-600'
+                                ? 'bg-amber-400 hover:bg-amber-500'
+                                : 'bg-primary hover:bg-blue-600'
                                 }`}
                         >
                             {isRunning ? <Pause size={32} fill="white" /> : <Play size={32} fill="white" className="ml-1" />}
@@ -179,8 +181,8 @@ export default function ClassroomTimer({ onClose }) {
                                 key={preset.label}
                                 onClick={() => setTime(preset.value)}
                                 className={`py-2 rounded-lg font-medium text-sm transition-colors ${initialTime === preset.value
-                                        ? 'bg-blue-50 text-primary ring-2 ring-primary/20'
-                                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                    ? 'bg-blue-50 text-primary ring-2 ring-primary/20'
+                                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
                                     }`}
                             >
                                 {preset.label}

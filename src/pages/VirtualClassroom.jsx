@@ -7,7 +7,7 @@ import RandomGrouper from '../components/RandomGrouper';
 
 export default function VirtualClassroom() {
     const { classId } = useParams();
-    const [presenceState, setPresenceState] = useState({});
+    const [presenceState, setPresenceState] = useState({}); // eslint-disable-line no-unused-vars
     const [onlineStudents, setOnlineStudents] = useState([]);
     const [students, setStudents] = useState([]); // Database students
     const [handRaises, setHandRaises] = useState([]); // Students with hands raised
@@ -21,6 +21,57 @@ export default function VirtualClassroom() {
     const [className, setClassName] = useState('...obtaining class...');
 
     const channelRef = useRef(null);
+
+    const fetchClassDetails = async () => {
+        // Fetch class name and initial students list
+        const { data: cls } = await supabase.from('classes').select('name').eq('id', classId).single();
+        if (cls) setClassName(cls.name);
+
+        const { data: studs } = await supabase.from('students').select('*').eq('class_id', classId).order('name');
+        if (studs) {
+            setStudents(studs);
+            setHandRaises(studs.filter(s => s.hand_raised_at).sort((a, b) => new Date(a.hand_raised_at) - new Date(b.hand_raised_at)));
+        }
+    };
+
+    const updateOnlineStudents = (state) => {
+        // Map presence state to a flat list of students
+        const presentValues = [];
+        Object.values(state).forEach(presences => {
+            presences.forEach(p => {
+                if (p.studentName) {
+                    presentValues.push({
+                        name: p.studentName,
+                        studentId: p.studentId,
+                        joinedAt: p.joinedAt // We will send this from student side
+                    });
+                }
+            });
+        });
+        // Sort by joinedAt
+        setOnlineStudents(presentValues.sort((a, b) => new Date(a.joinedAt) - new Date(b.joinedAt)));
+    };
+
+    const handleDbChange = (payload) => {
+        // Simple reload for now to keep state consistent, or optimistic updates
+        if (payload.eventType === 'UPDATE') {
+            // Efficiently update local state
+            setStudents(prev => prev.map(s => s.id === payload.new.id ? payload.new : s));
+
+            // Update Hand Raises
+            if (payload.new.hand_raised_at) {
+                // Add or update
+                setHandRaises(prev => {
+                    const exists = prev.find(h => h.id === payload.new.id);
+                    if (exists) return prev.map(h => h.id === payload.new.id ? payload.new : h).sort((a, b) => new Date(a.hand_raised_at) - new Date(b.hand_raised_at));
+                    return [...prev, payload.new].sort((a, b) => new Date(a.hand_raised_at) - new Date(b.hand_raised_at));
+                });
+            } else {
+                // Remove
+                setHandRaises(prev => prev.filter(h => h.id !== payload.new.id));
+            }
+        }
+    };
 
     useEffect(() => {
         fetchClassDetails();
@@ -63,58 +114,8 @@ export default function VirtualClassroom() {
             supabase.removeChannel(dbChannel);
             if (channelRef.current) supabase.removeChannel(channelRef.current);
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [classId]);
-
-    const fetchClassDetails = async () => {
-        // Fetch class name and initial students list
-        const { data: cls } = await supabase.from('classes').select('name').eq('id', classId).single();
-        if (cls) setClassName(cls.name);
-
-        const { data: studs } = await supabase.from('students').select('*').eq('class_id', classId).order('name');
-        if (studs) {
-            setStudents(studs);
-            setHandRaises(studs.filter(s => s.hand_raised_at).sort((a, b) => new Date(a.hand_raised_at) - new Date(b.hand_raised_at)));
-        }
-    };
-
-    const handleDbChange = (payload) => {
-        // Simple reload for now to keep state consistent, or optimistic updates
-        if (payload.eventType === 'UPDATE') {
-            // Efficiently update local state
-            setStudents(prev => prev.map(s => s.id === payload.new.id ? payload.new : s));
-
-            // Update Hand Raises
-            if (payload.new.hand_raised_at) {
-                // Add or update
-                setHandRaises(prev => {
-                    const exists = prev.find(h => h.id === payload.new.id);
-                    if (exists) return prev.map(h => h.id === payload.new.id ? payload.new : h).sort((a, b) => new Date(a.hand_raised_at) - new Date(b.hand_raised_at));
-                    return [...prev, payload.new].sort((a, b) => new Date(a.hand_raised_at) - new Date(b.hand_raised_at));
-                });
-            } else {
-                // Remove
-                setHandRaises(prev => prev.filter(h => h.id !== payload.new.id));
-            }
-        }
-    };
-
-    const updateOnlineStudents = (state) => {
-        // Map presence state to a flat list of students
-        const presentValues = [];
-        Object.values(state).forEach(presences => {
-            presences.forEach(p => {
-                if (p.studentName) {
-                    presentValues.push({
-                        name: p.studentName,
-                        studentId: p.studentId,
-                        joinedAt: p.joinedAt // We will send this from student side
-                    });
-                }
-            });
-        });
-        // Sort by joinedAt
-        setOnlineStudents(presentValues.sort((a, b) => new Date(a.joinedAt) - new Date(b.joinedAt)));
-    };
 
     const resetHands = async () => {
         await supabase.rpc('reset_hands', { c_id: classId });

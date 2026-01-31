@@ -1,22 +1,22 @@
 import { Check, X, Clock, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
 
-export default function StudentRow({ student, status, onStatusChange, isEditing, isSelected, onToggleSelect }) {
-    const StatusButton = ({ type, icon: Icon, isActive, colorClass, activeClass }) => (
-        <button
-            onClick={() => onStatusChange(type)}
-            disabled={isEditing}
-            className={clsx(
-                "p-2 rounded-xl transition-all flex items-center justify-center min-w-[44px] min-h-[44px]",
-                isActive ? activeClass : "text-gray-400 hover:bg-gray-100",
-                isActive && "shadow-sm transform scale-105",
-                isEditing && "opacity-50 cursor-not-allowed"
-            )}
-        >
-            <Icon size={20} strokeWidth={3} />
-        </button>
-    );
+const StatusButton = ({ type, icon: Icon, isActive, activeClass, onStatusChange, isEditing }) => ( // eslint-disable-line no-unused-vars
+    <button
+        onClick={() => onStatusChange(type)}
+        disabled={isEditing}
+        className={clsx(
+            "p-2 rounded-xl transition-all flex items-center justify-center min-w-[44px] min-h-[44px]",
+            isActive ? activeClass : "text-gray-400 hover:bg-gray-100",
+            isActive && "shadow-sm transform scale-105",
+            isEditing && "opacity-50 cursor-not-allowed"
+        )}
+    >
+        <Icon size={20} strokeWidth={3} />
+    </button>
+);
 
+export default function StudentRow({ student, status, onStatusChange, isEditing, isSelected, onToggleSelect }) {
     return (
         <div
             className={clsx(
@@ -49,18 +49,24 @@ export default function StudentRow({ student, status, onStatusChange, isEditing,
                     icon={Check}
                     isActive={status === 'present'}
                     activeClass="bg-green-100 text-green-600"
+                    onStatusChange={onStatusChange}
+                    isEditing={isEditing}
                 />
                 <StatusButton
                     type="late"
                     icon={Clock}
                     isActive={status === 'late'}
                     activeClass="bg-yellow-100 text-yellow-600"
+                    onStatusChange={onStatusChange}
+                    isEditing={isEditing}
                 />
                 <StatusButton
                     type="absent"
                     icon={X}
                     isActive={status === 'absent'}
                     activeClass="bg-red-100 text-red-600"
+                    onStatusChange={onStatusChange}
+                    isEditing={isEditing}
                 />
             </div>
         </div>

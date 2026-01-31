@@ -11,12 +11,31 @@ export default function StudentLobby() {
     // State
     const [students, setStudents] = useState([]);
     const [selectedStudentId, setSelectedStudentId] = useState(localStorage.getItem('studentId') || null);
-    const [loading, setLoading] = useState(true);
+    const [loading] = useState(true);
     const [isRegistered, setIsRegistered] = useState(!!localStorage.getItem('studentId'));
     const [handRaised, setHandRaised] = useState(false);
 
     // Broadcast State
     const [broadcastOverlay, setBroadcastOverlay] = useState(null); // { type, payload }
+
+    const fetchStudents = async () => {
+        const { data, error } = await supabase
+            .from('students')
+            .select('*')
+            .eq('class_id', classId)
+            .order('name');
+
+        if (error) {
+            console.error('Error fetching students:', error);
+        }
+        if (data) {
+            setStudents(data);
+            if (selectedStudentId) {
+                const me = data.find(s => s.id === selectedStudentId);
+                if (me) setHandRaised(!!me.hand_raised_at);
+            }
+        }
+    };
 
     useEffect(() => {
         if (!classId) {
@@ -75,26 +94,8 @@ export default function StudentLobby() {
             supabase.removeChannel(dbChannel);
             supabase.removeChannel(roomChannel);
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [classId, selectedStudentId]);
-
-    const fetchStudents = async () => {
-        const { data, error } = await supabase
-            .from('students')
-            .select('*')
-            .eq('class_id', classId)
-            .order('name');
-
-        if (error) {
-            console.error('Error fetching students:', error);
-        }
-        if (data) {
-            setStudents(data);
-            if (selectedStudentId) {
-                const me = data.find(s => s.id === selectedStudentId);
-                if (me) setHandRaised(!!me.hand_raised_at);
-            }
-        }
-    };
 
     const handleSelectMe = (student) => {
         localStorage.setItem('studentId', student.id);

@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useClasses } from '../context/ClassContext';
 import { Check, X, Clock, ArrowLeft, RotateCcw } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import clsx from 'clsx';
-import { format } from 'date-fns';
+import { motion, AnimatePresence } from 'framer-motion'; // eslint-disable-line no-unused-vars
+import clsx from 'clsx'; // eslint-disable-line no-unused-vars
+import { format } from 'date-fns'; // eslint-disable-line no-unused-vars
 
 export default function AttendanceSession() {
     const { classId } = useParams();
-    const navigate = useNavigate();
+    const navigate = useNavigate(); // eslint-disable-line no-unused-vars
     const { classes, updateAttendance } = useClasses();
 
     const [date] = useState(() => new Date().toISOString().split('T')[0]);

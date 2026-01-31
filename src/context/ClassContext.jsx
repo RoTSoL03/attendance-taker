@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
@@ -194,7 +195,7 @@ export function ClassProvider({ children }) {
         const code = nanoid();
         console.log(`Generating code ${code} for class ${classId}`);
         try {
-            const { data, error } = await supabase
+            const { error } = await supabase
                 .from('classes')
                 .update({ join_code: code })
                 .eq('id', classId)

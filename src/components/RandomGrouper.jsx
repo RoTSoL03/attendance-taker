@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, Users, RefreshCw, Copy, Check } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion'; // eslint-disable-line no-unused-vars
 
 export default function RandomGrouper({ students, onClose, onGroupsGenerated }) {
     const [method, setMethod] = useState('count'); // 'count' = Number of Groups, 'size' = Members per Group

@@ -41,6 +41,7 @@ function AppContent() {
           <Route path="/join" element={<JoinClass />} />
           <Route path="/lobby" element={<StudentLobby />} />
           <Route path="/auth" element={!user ? <Auth /> : <Navigate to="/" />} />
+          <Route path="*" element={<Navigate to={user ? "/" : "/join"} replace />} />
         </Routes>
       </Router>
     </ClassProvider>

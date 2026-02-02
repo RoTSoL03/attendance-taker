@@ -11,29 +11,42 @@ export default function StudentLobby() {
     // State
     const [students, setStudents] = useState([]);
     const [selectedStudentId, setSelectedStudentId] = useState(localStorage.getItem('studentId') || null);
-    const [loading] = useState(true);
+    const [loading, setLoading] = useState(true);
     const [isRegistered, setIsRegistered] = useState(!!localStorage.getItem('studentId'));
     const [handRaised, setHandRaised] = useState(false);
+    const [error, setError] = useState(null);
 
     // Broadcast State
     const [broadcastOverlay, setBroadcastOverlay] = useState(null); // { type, payload }
 
     const fetchStudents = async () => {
-        const { data, error } = await supabase
-            .from('students')
-            .select('*')
-            .eq('class_id', classId)
-            .order('name');
+        setLoading(true);
+        try {
+            const { data, error: fetchError } = await supabase
+                .from('students')
+                .select('*')
+                .eq('class_id', classId)
+                .order('name');
 
-        if (error) {
-            console.error('Error fetching students:', error);
-        }
-        if (data) {
-            setStudents(data);
-            if (selectedStudentId) {
-                const me = data.find(s => s.id === selectedStudentId);
-                if (me) setHandRaised(!!me.hand_raised_at);
+            if (fetchError) throw fetchError;
+
+            if (data) {
+                setStudents(data);
+                if (selectedStudentId) {
+                    const me = data.find(s => s.id === selectedStudentId);
+                    if (me) {
+                        setHandRaised(!!me.hand_raised_at);
+                    } else {
+                        // Was deleted or incorrect ID
+                        // Don't auto-logout yet to avoid jarring UX, but maybe warn?
+                    }
+                }
             }
+        } catch (err) {
+            console.error('Error fetching students:', err);
+            setError("Unable to connect to class. The class might have ended or you were removed.");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -97,16 +110,48 @@ export default function StudentLobby() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [classId, selectedStudentId]);
 
-    const handleSelectMe = (student) => {
-        localStorage.setItem('studentId', student.id);
-        localStorage.setItem('studentName', student.name);
-        setSelectedStudentId(student.id);
-        setIsRegistered(true);
-        // Force reload/re-subscribe to track presence correctly
-        window.location.reload();
+    const handleSelectMe = async (student) => {
+        // Optimistic check
+        if (student.taken_at && (new Date(student.taken_at) > new Date(Date.now() - 1000 * 60 * 60 * 2))) {
+            // If taken within last 2 hours, consider it taken. 
+            // (Optional timeout to auto-release old sessions if logic fails)
+            setError(`"${student.name}" is already taken.`);
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const { data: success, error: claimError } = await supabase
+                .rpc('claim_student', { s_id: student.id });
+
+            if (claimError) throw claimError;
+
+            if (success) {
+                localStorage.setItem('studentId', student.id);
+                localStorage.setItem('studentName', student.name);
+                setSelectedStudentId(student.id);
+                setIsRegistered(true);
+                window.location.reload();
+            } else {
+                setError(`"${student.name}" was just taken by someone else.`);
+                fetchStudents(); // Refresh list
+            }
+        } catch (err) {
+            console.error("Claim error:", err);
+            setError("Failed to join. Please try again.");
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleLeave = () => {
+    const handleLeave = async () => {
+        const sId = localStorage.getItem('studentId');
+        if (sId) {
+            try {
+                await supabase.rpc('release_student', { s_id: sId });
+            } catch (e) { console.error("Release error", e); }
+        }
+
         localStorage.removeItem('joinedClassId');
         localStorage.removeItem('joinedClassName');
         localStorage.removeItem('studentId');
@@ -134,7 +179,36 @@ export default function StudentLobby() {
     };
 
     if (loading && !students.length) {
-        // keep simple
+        return (
+            <div className="min-h-screen bg-primary flex flex-col items-center justify-center p-4">
+                <div className="animate-spin text-4xl mb-4">⏳</div>
+                <h2 className="text-white text-xl font-bold">Connecting to Class...</h2>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="min-h-screen bg-primary flex flex-col items-center justify-center p-4 text-center">
+                <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full">
+                    <div className="text-red-500 text-5xl mb-4">⚠️</div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Connection Issue</h2>
+                    <p className="text-gray-600 mb-6">{error}</p>
+                    <button
+                        onClick={() => { setError(null); fetchStudents(); }}
+                        className="w-full py-3 bg-primary text-white rounded-xl font-bold mb-3 hover:bg-blue-600"
+                    >
+                        Retry Connection
+                    </button>
+                    <button
+                        onClick={handleLeave}
+                        className="w-full py-3 bg-gray-100 text-gray-500 rounded-xl font-bold hover:bg-gray-200"
+                    >
+                        Back to Join
+                    </button>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -203,18 +277,31 @@ export default function StudentLobby() {
                                     No students found.
                                 </div>
                             ) : (
-                                students.map(student => (
-                                    <button
-                                        key={student.id}
-                                        onClick={() => handleSelectMe(student)}
-                                        className="w-full p-4 rounded-xl border border-gray-100 hover:border-primary hover:bg-blue-50 transition-all flex items-center gap-3 group text-left"
-                                    >
-                                        <div className="w-10 h-10 rounded-full bg-gray-100 group-hover:bg-white flex items-center justify-center text-gray-500 font-bold">
-                                            {student.name.charAt(0)}
-                                        </div>
-                                        <span className="font-bold text-gray-700 group-hover:text-primary">{student.name}</span>
-                                    </button>
-                                ))
+                                students.map(student => {
+                                    const isTaken = !!student.taken_at;
+                                    return (
+                                        <button
+                                            key={student.id}
+                                            onClick={() => !isTaken && handleSelectMe(student)}
+                                            disabled={isTaken}
+                                            className={`w-full p-4 rounded-xl border transition-all flex items-center gap-3 group text-left ${isTaken
+                                                ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
+                                                : 'border-gray-100 hover:border-primary hover:bg-blue-50'
+                                                }`}
+                                        >
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${isTaken ? 'bg-gray-200 text-gray-400' : 'bg-gray-100 group-hover:bg-white text-gray-500'
+                                                }`}>
+                                                {student.name.charAt(0)}
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className={`font-bold ${isTaken ? 'text-gray-400' : 'text-gray-700 group-hover:text-primary'}`}>
+                                                    {student.name}
+                                                </span>
+                                                {isTaken && <span className="text-xs text-gray-400 font-medium">Already joined</span>}
+                                            </div>
+                                        </button>
+                                    );
+                                })
                             )}
                         </div>
                     </div>
